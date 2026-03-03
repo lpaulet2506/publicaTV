@@ -1,0 +1,5 @@
+{
+  "name": "TV Data Visualizer",
+  "description": "Visualizador de datos de Excel para pantallas grandes (TV) usando Apache ECharts.",
+  "requestFramePermissions": []
+}
