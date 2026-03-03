@@ -16,14 +16,40 @@ function cn(...inputs: ClassValue[]) {
 
 // --- Components ---
 
-function Home() {
+function ConfigPage() {
   const [url, setUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const navigate = useNavigate();
 
-  const handleVisualize = (e: React.FormEvent) => {
+  // Load current config on mount
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) setUrl(data.url);
+      });
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (url.trim()) {
-      navigate(`/view?url=${encodeURIComponent(url.trim())}`);
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() })
+      });
+      if (res.ok) {
+        setMessage({ type: 'success', text: '¡Configuración guardada! La tele se actualizará automáticamente.' });
+      } else {
+        throw new Error('Error al guardar');
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'No se pudo guardar la configuración.' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -46,15 +72,15 @@ function Home() {
           </div>
           <div className="space-y-4">
             <h1 className="text-8xl font-black tracking-tighter uppercase leading-none text-zinc-900">
-              TV <span className="text-blue-600">TABLE</span>
+              TV <span className="text-blue-600">CONFIG</span>
             </h1>
             <p className="text-3xl text-zinc-400 font-bold uppercase tracking-widest">
-              Visualización Profesional de Excel
+              Control Remoto de Pantalla
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleVisualize} className="space-y-8">
+        <form onSubmit={handleSave} className="space-y-8">
           <div className="relative group">
             <input
               type="text"
@@ -66,48 +92,99 @@ function Home() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={!url.trim()}
-            className="group relative w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white py-10 rounded-[2.5rem] text-5xl font-black transition-all overflow-hidden shadow-[0_20px_50px_rgba(37,99,235,0.2)] active:scale-[0.98]"
-          >
-            <div className="flex items-center justify-center gap-6">
-              <Play size={60} fill="currentColor" />
-              <span>CARGAR TABLA</span>
+          {message && (
+            <div className={cn(
+              "p-6 rounded-2xl text-2xl font-bold border-2",
+              message.type === 'success' ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
+            )}>
+              {message.text}
             </div>
-          </button>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="submit"
+              disabled={saving || !url.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-200 text-white py-8 rounded-[2rem] text-4xl font-black transition-all shadow-lg flex items-center justify-center gap-4"
+            >
+              {saving ? <Loader2 className="animate-spin" size={40} /> : <RefreshCw size={40} />}
+              <span>GUARDAR</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/tv')}
+              className="bg-zinc-900 hover:bg-black text-white py-8 rounded-[2rem] text-4xl font-black transition-all shadow-lg flex items-center justify-center gap-4"
+            >
+              <Play size={40} fill="currentColor" />
+              <span>VER TELE</span>
+            </button>
+          </div>
         </form>
 
-        <div className="pt-16 flex justify-center gap-12 opacity-50">
-          <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-blue-600 rounded-full" />
-            <span className="text-xl font-bold uppercase tracking-widest">Fondo Claro</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-blue-600 rounded-full" />
-            <span className="text-xl font-bold uppercase tracking-widest">Todas las Columnas</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-blue-600 rounded-full" />
-            <span className="text-xl font-bold uppercase tracking-widest">TV Ready</span>
-          </div>
+        <div className="pt-8 text-zinc-400 text-xl font-medium">
+          La tele debe estar abierta en: <span className="text-blue-600 font-bold underline">/tv</span>
         </div>
       </div>
     </div>
   );
 }
 
-function TableView() {
+function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const url = searchParams.get('url');
+  const queryUrl = searchParams.get('url');
   
+  const [activeUrl, setActiveUrl] = useState<string | null>(queryUrl);
   const [tableData, setTableData] = useState<{ title: string; headers: string[]; rows: string[][] }>({ title: '', headers: [], rows: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
 
+  // Sync with server once on mount if in TV mode
+  useEffect(() => {
+    if (!isTvMode) return;
+
+    const syncUrl = async () => {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.url && data.url !== activeUrl) {
+          setActiveUrl(data.url);
+        }
+      } catch (e) {
+        console.error("Error syncing URL", e);
+      }
+    };
+
+    syncUrl();
+  }, [isTvMode]); // Only on mount or mode change
+
+  const handleManualSync = async () => {
+    if (isTvMode) {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.url) {
+          // If URL is the same, fetchData won't trigger via useEffect, so we call it manually
+          if (data.url === activeUrl) {
+            fetchData(data.url);
+          } else {
+            setActiveUrl(data.url); // This will trigger the useEffect to fetchData
+          }
+          return;
+        }
+      } catch (e) {
+        console.error("Manual sync failed", e);
+      }
+    }
+    
+    if (activeUrl) {
+      fetchData(activeUrl);
+    }
+  };
+
   const fetchData = useCallback(async (targetUrl: string) => {
+    if (!targetUrl) return;
     setLoading(true);
     setError(null);
     try {
@@ -178,7 +255,6 @@ function TableView() {
       const cleanRows = jsonData.map(row => 
         (row || []).map(cell => {
           if (cell instanceof Date && !isNaN(cell.getTime())) {
-            // Format date to Spanish: "5 de febrero"
             return spanishDateFormatter.format(cell);
           }
           return (cell === null || cell === undefined) ? "" : String(cell).trim();
@@ -217,12 +293,12 @@ function TableView() {
   }, []);
 
   useEffect(() => {
-    if (url) {
-      fetchData(url);
-    } else {
-      navigate('/');
+    if (activeUrl) {
+      fetchData(activeUrl);
+    } else if (!isTvMode && !queryUrl) {
+      navigate('/config');
     }
-  }, [url, fetchData, navigate]);
+  }, [activeUrl, queryUrl, fetchData, navigate, isTvMode]);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
@@ -252,6 +328,24 @@ function TableView() {
     );
   }
 
+  if (!activeUrl && !loading) {
+    return (
+      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center p-12 text-center gap-8">
+        <div className="flex flex-col items-center gap-6 text-zinc-400 bg-zinc-50 p-16 rounded-[3rem] border-4 border-zinc-100 shadow-2xl">
+          <TableIcon size={100} />
+          <h2 className="text-6xl font-black uppercase">Sin Configuración</h2>
+          <p className="text-3xl font-bold max-w-2xl">La tele está lista, pero no se ha configurado ningún enlace todavía.</p>
+          <button 
+            onClick={() => navigate('/config')}
+            className="mt-8 px-12 py-6 bg-blue-600 text-white text-3xl font-black rounded-full hover:bg-blue-700 transition-all"
+          >
+            IR A CONFIGURACIÓN
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="fixed inset-0 bg-white flex flex-col items-center justify-center p-12 text-center gap-8">
@@ -260,13 +354,13 @@ function TableView() {
           <h2 className="text-6xl font-black uppercase">Error de Conexión</h2>
           <p className="text-3xl font-bold text-red-500 max-w-2xl">{error}</p>
           <div className="mt-8 p-8 bg-white rounded-2xl border border-red-200 text-xl text-zinc-500 font-normal text-left">
-            Tip: Asegúrate de que el archivo esté configurado como "Cualquier persona con el enlace" (Público). En Google Sheets usa "Compartir" &rarr; "Cualquier persona con el enlace".
+            Tip: Asegúrate de que el archivo esté configurado como "Cualquier persona con el enlace" (Público).
           </div>
           <button 
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/config')}
             className="mt-8 px-12 py-6 bg-red-600 text-white text-3xl font-black rounded-full hover:bg-red-700 transition-all"
           >
-            VOLVER AL INICIO
+            VOLVER A CONFIGURACIÓN
           </button>
         </div>
       </div>
@@ -286,16 +380,19 @@ function TableView() {
         )}
       >
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/config')}
           className="flex items-center gap-3 px-8 py-4 bg-[#f8f9fa] hover:bg-[#e9ecef] text-[#1a365d] rounded-none transition-all text-2xl font-bold border border-[#c5a059]"
         >
           <ArrowLeft size={32} />
-          <span>Cambiar URL</span>
+          <span>Configuración</span>
         </button>
         
         <div className="flex items-center gap-4">
+          <div className="text-zinc-400 font-bold text-xl uppercase tracking-widest mr-4">
+            {isTvMode ? "Modo TV Activo" : "Vista Previa"}
+          </div>
           <button 
-            onClick={() => url && fetchData(url)}
+            onClick={handleManualSync}
             disabled={loading}
             className="flex items-center gap-3 px-8 py-4 bg-[#1a365d] hover:bg-[#2c5282] text-white rounded-none transition-all text-2xl font-bold shadow-md disabled:opacity-50 border border-[#c5a059]"
           >
@@ -385,7 +482,9 @@ function TableView() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<ConfigPage />} />
+      <Route path="/config" element={<ConfigPage />} />
+      <Route path="/tv" element={<TableView isTvMode={true} />} />
       <Route path="/view" element={<TableView />} />
     </Routes>
   );
