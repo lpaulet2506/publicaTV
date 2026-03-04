@@ -372,10 +372,10 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
   const baseFontSize = rowCount > 0 ? Math.min(6, 75 / (rowCount + 2)) : 6;
 
   return (
-    <div className="fixed inset-0 bg-[#f4f4f4] flex flex-col overflow-hidden text-[#1a365d] font-sans select-none">
+    <div className="fixed inset-0 bg-[#f8fafc] flex flex-col overflow-hidden text-[#1a365d] font-sans select-none">
       <div 
         className={cn(
-          "fixed top-0 left-0 right-0 p-6 flex justify-between items-center z-50 transition-all duration-500 bg-white/95 backdrop-blur-md border-b border-[#c5a059] shadow-xl",
+          "fixed top-0 left-0 right-0 p-6 flex justify-between items-center z-50 transition-all duration-500 bg-white/95 backdrop-blur-md border-b border-[#c5a059] shadow-xl font-display",
           showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
         )}
       >
@@ -406,7 +406,7 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
         <div className="flex-1 flex flex-col border-b-8 border-[#c5a059] bg-white">
           {title && (
             <div 
-              className="bg-[#1a365d] text-[#c5a059] flex items-center justify-center font-black uppercase tracking-[0.3em] border-b-4 border-[#c5a059]"
+              className="bg-[#1a365d] text-[#c5a059] flex items-center justify-center font-black uppercase tracking-[0.3em] border-b-4 border-[#c5a059] font-display"
               style={{ height: `${baseFontSize * 2}vh`, fontSize: `${baseFontSize * 1.1}vh` }}
             >
               {title}
@@ -414,7 +414,7 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
           )}
 
           <div 
-            className="grid grid-cols-[18%_1fr_22%] bg-[#f8f9fa] border-b-2 border-[#c5a059]"
+            className="grid grid-cols-[18%_1fr_22%] bg-[#f8fafc] border-b-2 border-[#c5a059] font-display"
             style={{ height: `${baseFontSize * 1.3}vh` }}
           >
             {headers.map((header, idx) => (
@@ -432,16 +432,16 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
             ))}
           </div>
 
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col font-body">
             {rows.map((row, rowIdx) => (
               <div 
                 key={rowIdx} 
                 className={cn(
-                  "grid grid-cols-[18%_1fr_22%] border-b border-[#94a3b8] transition-colors flex-1",
+                  "grid grid-cols-[18%_1fr_22%] border-b border-[#cbd5e1] transition-colors flex-1",
                   rowIdx % 4 === 0 ? "bg-white" : 
-                  rowIdx % 4 === 1 ? "bg-[#f1f5f9]" :
-                  rowIdx % 4 === 2 ? "bg-[#e2e8f0]" :
-                  "bg-[#cbd5e1]"
+                  rowIdx % 4 === 1 ? "bg-[#f0f7ff]" :
+                  rowIdx % 4 === 2 ? "bg-[#fffbf0]" :
+                  "bg-[#e6f2ff]"
                 )}
               >
                 {headers.map((_, colIdx) => {
@@ -450,11 +450,11 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
                     <div 
                       key={colIdx} 
                       className={cn(
-                        "flex items-center px-1 font-bold tracking-tight border-r border-[#f1f5f9] last:border-r-0",
+                        "flex items-center px-1 font-bold tracking-tight border-r border-black/5 last:border-r-0",
                         "justify-start text-left",
-                        colIdx === 0 ? "text-[#1a365d] font-mono pl-12" : 
+                        colIdx === 0 ? "text-[#1a365d] font-display font-extrabold pl-12" : 
                         colIdx === 1 ? "text-[#334155]" : 
-                        "text-[#64748b] font-medium italic"
+                        "text-[#475569] font-semibold italic"
                       )}
                       style={{ 
                         fontSize: `${Math.min(baseFontSize * 0.85, (75 / rowCount))}vh`,
