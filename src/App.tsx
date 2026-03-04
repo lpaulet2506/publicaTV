@@ -422,7 +422,8 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
                 key={idx} 
                 className={cn(
                   "flex items-center px-2 font-black uppercase tracking-widest border-r border-[#e2e8f0] last:border-r-0",
-                  "justify-start text-left text-[#1a365d]"
+                  "justify-start text-left text-[#1a365d]",
+                  idx === 0 && "pl-12"
                 )}
                 style={{ fontSize: `${baseFontSize * 0.65}vh` }}
               >
@@ -451,7 +452,7 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
                       className={cn(
                         "flex items-center px-1 font-bold tracking-tight border-r border-[#f1f5f9] last:border-r-0",
                         "justify-start text-left",
-                        colIdx === 0 ? "text-[#1a365d] font-mono" : 
+                        colIdx === 0 ? "text-[#1a365d] font-mono pl-12" : 
                         colIdx === 1 ? "text-[#334155]" : 
                         "text-[#64748b] font-medium italic"
                       )}
