@@ -24,10 +24,17 @@ function ConfigPage() {
 
   // Load current config on mount
   useEffect(() => {
+    // Try local storage first for immediate feedback
+    const localUrl = localStorage.getItem('tv_excel_url');
+    if (localUrl) setUrl(localUrl);
+
     fetch('/api/config')
       .then(res => res.json())
       .then(data => {
-        if (data.url) setUrl(data.url);
+        if (data.url) {
+          setUrl(data.url);
+          localStorage.setItem('tv_excel_url', data.url);
+        }
       });
   }, []);
 
@@ -35,13 +42,15 @@ function ConfigPage() {
     e.preventDefault();
     setSaving(true);
     setMessage(null);
+    const trimmedUrl = url.trim();
     try {
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() })
+        body: JSON.stringify({ url: trimmedUrl })
       });
       if (res.ok) {
+        localStorage.setItem('tv_excel_url', trimmedUrl);
         setMessage({ type: 'success', text: '¡Configuración guardada! La tele se actualizará automáticamente.' });
       } else {
         throw new Error('Error al guardar');
@@ -134,7 +143,11 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
   const navigate = useNavigate();
   const queryUrl = searchParams.get('url');
   
-  const [activeUrl, setActiveUrl] = useState<string | null>(queryUrl);
+  const [activeUrl, setActiveUrl] = useState<string | null>(() => {
+    if (queryUrl) return queryUrl;
+    if (isTvMode) return localStorage.getItem('tv_excel_url');
+    return null;
+  });
   const [tableData, setTableData] = useState<{ title: string; headers: string[]; rows: string[][] }>({ title: '', headers: [], rows: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +163,7 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
         const data = await res.json();
         if (data.url && data.url !== activeUrl) {
           setActiveUrl(data.url);
+          localStorage.setItem('tv_excel_url', data.url);
         }
       } catch (e) {
         console.error("Error syncing URL", e);
@@ -158,6 +172,13 @@ function TableView({ isTvMode = false }: { isTvMode?: boolean }) {
 
     syncUrl();
   }, [isTvMode]); // Only on mount or mode change
+
+  // Persist activeUrl to localStorage
+  useEffect(() => {
+    if (activeUrl) {
+      localStorage.setItem('tv_excel_url', activeUrl);
+    }
+  }, [activeUrl]);
 
   const handleManualSync = async () => {
     if (isTvMode) {
